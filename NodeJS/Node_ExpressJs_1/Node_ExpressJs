@@ -1,0 +1,491 @@
+Project Setup:
+Create package.json file first.  npm init -y
+Install dependencises . npm i express dotenv pg cors joi
+express - express framework to build rest api
+dotenv - to get the value from dotenv file
+pg - connect to db and run the queries, its the postgres package
+cors - for cross domain
+joi - For schema validation, it will validate all the request coming to ur controller.
+
+To run on local On package.json modify on script and install nodemon as well npm i --save-dev nodemon
+"dev": "nodemon src/index.js",
+"type":"module", - below main
+
+Eg: 
+"main": "index.js",
+  "type":"module",
+  "scripts": {
+    "dev":"nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+
+Folder structure:
+src - source folder contains all our logics
+Inside source will have below folders
+.env - contain environment variables will be places at same place of src, same hierarchy
+routes - Contain all our routes
+controller - Contain all our controller
+middleware - Contains all our created middleware
+data - contain all the sql queries
+config - Contains the database connection data.
+model - contain the service that connect to database and  queries.
+index.js  - Main file
+
+
+Creating Express App:
+Will have all the import then dotenv.config() - It will take the config values ie take value from env file , we need to import dotenv as well., then create the express app and create the port that we take from env else 3001, then we will setup all the middleware, here express.json and cors then we will write routes then we will write our error handelling middleware then server running ie listen. This is the flow tjat we will follow.
+
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3001;
+
+//Middlewares
+app.use(express.json());
+app.use(cors);
+
+//Routes
+
+
+//Error Handeling Middleware
+
+
+//Server Running
+app.listen(port, ()=>{
+  console.log(`Server is running on http://localhost:${port}`)
+});
+
+Setup:
+Here we sill setup postgres db and pg admin. Postgres username: postgres, password: password
+
+Express DB connection:
+Once db is setup, we need to connect db from express, do do that need to write all the db variables in in ,env file.
+USER="postgres"
+PASSWORD="password"
+HOST="localhost"
+DBPORT=5432
+DATABASE="NodeJs"
+Once its defined, need to create the connection, so on config folder create db.js and and create the connection. Because config folder will contain all the database connection data.Here we have destructured Pool from pkg not directly import the pool the reason is its common js type.
+
+import pkg from "pg";
+
+const {Pool} = pkg;
+Here we are creating the Pool of connection, which will be used when ever we connect to db
+const pool = new Pool({
+    user: process.env.USER,
+    password: process.env.PASSWORD,
+    host: process.env.HOST,
+    dbport: process.env.DBPORT,
+    database: process.env.DATABASE,
+});
+
+Then we write below stattement, which will take the callback and we are saying database connection is established.
+pool.on("connect", ()=>{
+    console.log("Database Connection is established")
+});
+
+Then we are exporting the pool.
+export default pool;
+So here database connection and configuration is done.
+
+Test DB connection:
+.env fle should be always outside src folder
+////Testing DB connection created one sample api, where we query to get the db name.Used to run the query await pool.query("SELECT current_database()"); and get first rown from the column name res.send(`The DB is: ${result.rows[0].current_database}`);
+
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import pool from "./config/db.js";
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3001;
+
+//Middlewares
+app.use(express.json());
+app.use(cors());
+
+//Routes
+
+
+//Error Handeling Middleware
+
+
+//Testing DB connection
+
+app.get("/", async(req, res)=>{
+  const result = await pool.query("SELECT current_database()");
+  console.log(result);
+  res.send(`The DB is: ${result.rows[0].current_database}`);
+});
+
+//Server Running
+app.listen(port, ()=>{
+  
+
+  console.log(`Server is running on http://localhost:${port}`)
+});
+
+User Routes:
+
+Here on the routes folder creating userRoutes. js file  and inside that we are importing express from that we are creting the express router ie const router = express.Router();. Then we are defining below ie router.post("/user", createUser); if post call with /user it will run this and run createUser fn. here we export default router; and in index.js file we can use different name as its a default export.
+
+import express from "express";
+
+const router = express.Router();
+
+router.post("/user", createUser);
+router.get("/user", getAllUser);
+router.put("/user/:id", updateUser);
+router.get("/user/:id", getUser);
+router.delete("/user/:id", deleteUser);
+
+export default router;
+
+index.js file
+Here on routes app.use("/api", userRoutes); we define like this so when req came with /api/user with method, then it will redirect to userRoutes file and run the specific routes in that file.
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import pool from "./config/db.js";
+import userRoutes from "./routes/userRoutes.js";
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3001;
+
+//Middlewares
+app.use(express.json());
+app.use(cors());
+
+//Routes
+
+app.use("/api", userRoutes);
+
+
+//Error Handeling Middleware
+
+
+//Testing DB connection
+
+app.get("/", async(req, res)=>{
+  const result = await pool.query("SELECT current_database()");
+  console.log(result);
+  res.send(`The DB is: ${result.rows[0].current_database}`);
+});
+
+//Server Running
+app.listen(port, ()=>{
+  
+
+  console.log(`Server is running on http://localhost:${port}`)
+});
+
+Error Handeling:
+Created common error handeling middleware under middleware folder with errorHandler.js file and created below fn. Here sending 500 status with json response 
+const errorHandleling = (err, req, res, next)=>{   
+    console.log(err.stack);
+    res.status(500).json({
+        status:500,
+        message: "something went wrong",
+        error: err.message,
+    });
+}
+export default errorHandleling;
+Then Same used in index.js file
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import pool from "./config/db.js";
+import userRoutes from "./routes/userRoutes.js";
+import errorHandleling from "./middleware/errorHandler.js";
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3001;
+
+//Middlewares
+app.use(express.json());
+app.use(cors());
+
+//Routes
+
+app.use("/api", userRoutes);
+
+
+//Error Handeling Middleware
+app.use(errorHandleling);
+
+//Testing DB connection
+
+app.get("/", async(req, res)=>{
+  const result = await pool.query("SELECT current_database()");
+  console.log(result);
+  res.send(`The DB is: ${result.rows[0].current_database}`);
+});
+
+//Server Running
+app.listen(port, ()=>{
+  
+
+  console.log(`Server is running on http://localhost:${port}`)
+});
+
+User Service Model:
+"all the details related to connection to the db then get the data and store the data" ie usually all the api will interact with db and run query right those db query we write here. ie we actually create a function for each apis on each api what query it will do on db , that queries we actually write in the model.create a file called userModel.js under folder then create a function for each api, and each fun will contain the db query that will perform.
+
+import pool from "../config/db";
+
+export const getallUserService = async () => {
+
+    const result  = await pool.query("SELECT * FROM user");
+    return result.rows;
+
+}
+
+export const getUserByIDService = async (id) => {
+
+    const result  = await pool.query("SELECT * FROM user WHERE id = $1 RETURNING *", [id]);
+    return result.rows[0];
+
+}
+
+export const createUserService = async (name, email) => {
+
+    const result  = await pool.query("INSERT INTO user (name, email) VALUES($1, $2) RETURNING * ", [name, email]);
+    return result.rows[0];
+
+}
+
+export const updateUserByIDService = async ( name, email, id) => {
+
+    const result  = await pool.query("UPDATE user SET name=$1, email=$2 WHERE id=$3  RETURNING * ", [name, email, id]);
+    return result.rows[0];
+
+}
+
+export const deleteUserByIDService = async ( id) => {
+
+    const result  = await pool.query("DELETE FROM user WHERE id=$1 RETURNING * ", [id]);
+    return result.rows[0];
+
+}
+
+User Controller:
+We will use the user model in controller.Create userController.js file undrr controller
+First we will create the standar response for all the api.
+
+import { createUserService,
+    getallUserService,
+    updateUserByIDService,
+    getUserByIDService,
+    deleteUserByIDService,
+
+ } from "../model/userModel.js";
+//Standardise respone
+
+export const handleResponse = (res, status, message, data=null ) => {
+    res.status(status).json({
+        status,
+        message,
+        data,
+    });
+};
+
+Then we will create the api function ie we have called in routes.here next will call the errorHandler which called after routes.
+
+export const createUser = async(req, res, next) => {
+    const {name, email} = req.body;
+    try {
+        const newUser = await createUserService(name, email);
+        handleResponse(res, "201", "User Created Successfully", newUser);
+    } catch(err) {
+        next(err);
+    }
+    
+};
+
+export const getAllUser = async(req, res, next) => {
+
+    try {
+        const user = await getallUserService();
+        handleResponse(res, "200", "User Fetched Successfully", user);
+    } catch(err) {
+        next(err);
+    }
+    
+};
+
+export const updateUser = async(req, res, next) => {
+    const {name, email} = req.body;
+    try {
+        const user = await updateUserByIDService(name, email, req.param.id);
+        if(!user) {
+            return handleResponse(res, "404", "User Not Found");
+        }
+        handleResponse(res, "200", "User Updated Successfully", user);
+    } catch(err) {
+        next(err);
+    }
+    
+};
+
+export const getUser = async(req, res, next) => {
+    try {
+        const user = await getUserByIDService(req.param.id);
+        if(!user) {
+            return handleResponse(res, "404", "User Not Found");
+        }
+        handleResponse(res, "200", "User Fetched Successfully", user);
+    } catch(err) {
+        next(err);
+    }
+    
+};
+
+export const deleteUser = async(req, res, next) => {
+    try {
+        const user = await deleteUserByIDService(req.param.id);
+        if(!user) {
+            return handleResponse(res, "404", "User Not Found");
+        }
+        handleResponse(res, "200", "User Deleted Successfully", user);
+    } catch(err) {
+        next(err);
+    }
+    
+};
+
+Now we have created , but we dont have data in data base ir table and its data, so next we are creating that.
+
+Create Table:
+create data.sql file under data folder and create a sql to create a table , if its not null
+CREATE TABLE IF NOT EXISTS users(
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT NOW()
+)
+Then create a createUserTable.js in same location and create a function to run the same table sql, the reason is we will place this fn when we start the app ie index.js file , so when the app starts if the table is not available it will create one one.Like datasetup only js fn we can call so we create a js file with fn and called in index.js file.
+
+import pool from "../config/db.js";
+
+const createUserTable = () =>{
+
+    const queryText = `CREATE TABLE IF NOT EXISTS users(
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT NOW()
+)`;
+
+    try {
+        const result  = pool.query(queryText);
+        console.log('User Table Created Successfully');
+    } catch (error) {
+        console.log('Error Creating Table');
+    }
+
+}
+
+export default createUserTable;
+
+Index.js
+
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import pool from "./config/db.js";
+import userRoutes from "./routes/userRoutes.js";
+import errorHandleling from "./middleware/errorHandler.js";
+import createUserTable from "./data/createUserTable.js";
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3001;
+
+//Middlewares
+app.use(express.json());
+app.use(cors());
+
+//Routes
+
+app.use("/api", userRoutes);
+
+
+//Error Handeling Middleware
+app.use(errorHandleling);
+
+//Create Table If not exist
+createUserTable();
+
+
+//Testing DB connection
+
+app.get("/", async(req, res)=>{
+  const result = await pool.query("SELECT current_database()");
+  // console.log(result);
+  res.send(`The DB is: ${result.rows[0].current_database}`);
+});
+
+//Server Running
+app.listen(port, ()=>{
+  
+
+  console.log(`Server is running on http://localhost:${port}`)
+});
+
+
+JOI:
+It used for input validator.When we send the req, if the req is wrong before sending this to db, need some validation, we use this.
+Create the input validator.js file. and write the user schema how it should look like, we are creating the userschema with joi object that take 2 fields ie the req body fields adn how that req. here we mentioned min length, required, string then email type. Once schema is created, creating middleware validateInputText, take req, res and have next, because its middleware. We are validating the userschema with its req body ie const {error} = userSchema.validate(req.body); if any error occured we are sending the status 400. On message message: error.details[0].message on error we are gettingdetails first argument. Then we finally call next() to go to next step.
+
+import JOI from "joi";
+
+const userSchema = JOI.object({
+    name: JOI.string().min(3).required(),
+    email: JOI.string().email().required(),
+});
+
+const validateInputText = (req, res, next) => {
+    const {error} = userSchema.validate(req.body);
+    if(error) {
+         return res.status(400).json({
+            status: 400,
+            message: error.details[0].message
+        });
+    }
+    next();
+};
+
+export default validateInputText;
+
+Now we define this but need to call in user routes ie when put and post happend it validate the req body ie router.post("/user",validateInputText, createUser); , here we have called as middleware, so when sending req, if the middleware satisfied then only go to next actual fn ie performing to db.
+
+import express from "express";
+
+import { createUser,
+    getAllUser,
+    updateUser,
+    getUser,
+    deleteUser
+ } from "../controller/userController.js";
+import validateInputText from "../middleware/inputValidator.js";
+
+const router = express.Router();
+
+router.post("/user",validateInputText, createUser);
+router.get("/user", getAllUser);
+router.put("/user/:id", validateInputText, updateUser);
+router.get("/user/:id", getUser);
+router.delete("/user/:id", deleteUser);
+
+export default router;
